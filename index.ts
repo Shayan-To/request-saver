@@ -1,23 +1,19 @@
 import express from "express";
 import _fs, { WriteStream } from "fs";
 import _fsp from "fs/promises";
+import serveIndex from "serve-index";
 import { pipeline } from "stream/promises";
 
 const fs = { ..._fs, ..._fsp };
 
 const app = express();
 
-app.all(/^\/[^/]+$/, async (req, res) => {
+app.all(/^\/\/[^/]+$/, async (req, res) => {
     let file: WriteStream | undefined;
     try {
-        const id = req.url.replace(/^\//, "");
+        const id = req.url.replace(/^\/\//, "");
         const method = req.method.toLowerCase();
         const dir = `${id}-${method}`;
-
-        if (dir === "favicon.ico-get") {
-            res.status(404).send("No favicon.");
-            return;
-        }
 
         await fs.mkdir(`./data/${dir}`, { recursive: true });
         file = fs.createWriteStream(
@@ -49,5 +45,16 @@ app.all(/^\/[^/]+$/, async (req, res) => {
         file?.destroy();
     }
 });
+
+app.use("/", serveIndex("./data"));
+app.use(
+    "/",
+    express.static("./data", {
+        index: false,
+        setHeaders(res) {
+            res.setHeader("Content-Type", "text/plain");
+        },
+    })
+);
 
 app.listen(5534, "::", () => console.log("http://localhost:5534/"));
